@@ -57,7 +57,7 @@ def parse_scheduler(config, optimizer):
     interval = config.get("interval", "epoch")
     assert interval in ["epoch", "step"]
     if config.name == "SequentialLR":
-        scheduler = {
+        return {
             "scheduler": lr_scheduler.SequentialLR(
                 optimizer,
                 [
@@ -69,7 +69,7 @@ def parse_scheduler(config, optimizer):
             "interval": interval,
         }
     elif config.name == "ChainedScheduler":
-        scheduler = {
+        return {
             "scheduler": lr_scheduler.ChainedScheduler(
                 [
                     parse_scheduler(conf, optimizer)["scheduler"]
@@ -79,8 +79,7 @@ def parse_scheduler(config, optimizer):
             "interval": interval,
         }
     else:
-        scheduler = {
+        return {
             "scheduler": get_scheduler(config.name)(optimizer, **config.args),
             "interval": interval,
         }
-    return scheduler

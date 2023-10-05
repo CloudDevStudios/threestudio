@@ -94,11 +94,7 @@ class BaseSystem(pl.LightningModule, Updateable, SaverMixin):
             "optimizer": optim,
         }
         if self.cfg.scheduler is not None:
-            ret.update(
-                {
-                    "lr_scheduler": parse_scheduler(self.cfg.scheduler, optim),
-                }
-            )
+            ret["lr_scheduler"] = parse_scheduler(self.cfg.scheduler, optim)
         return ret
 
     def training_step(self, batch, batch_idx):
@@ -273,7 +269,7 @@ class BaseLift3DSystem(BaseSystem):
             threestudio.info(f"Validation results will be saved to {self._save_dir}")
         else:
             threestudio.warn(
-                f"Saving directory not set for the system, visualization results will not be saved"
+                "Saving directory not set for the system, visualization results will not be saved"
             )
 
     def on_test_end(self) -> None:

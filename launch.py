@@ -50,7 +50,7 @@ def main(args, extras) -> None:
     # As far as Pytorch Lightning is concerned, we always use all available GPUs
     # (possibly filtered by CUDA_VISIBLE_DEVICES).
     devices = -1
-    if len(env_gpus) > 0:
+    if env_gpus:
         # CUDA_VISIBLE_DEVICES was set already, e.g. within SLURM srun or higher-level script.
         n_gpus = len(env_gpus)
     else:

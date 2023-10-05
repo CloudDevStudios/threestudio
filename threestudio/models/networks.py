@@ -158,7 +158,7 @@ class VanillaMLP(nn.Module):
             self.make_linear(dim_in, self.n_neurons, is_first=True, is_last=False),
             self.make_activation(),
         ]
-        for i in range(self.n_hidden_layers - 1):
+        for _ in range(self.n_hidden_layers - 1):
             layers += [
                 self.make_linear(
                     self.n_neurons, self.n_neurons, is_first=False, is_last=False
@@ -180,8 +180,7 @@ class VanillaMLP(nn.Module):
         return x
 
     def make_linear(self, dim_in, dim_out, is_first, is_last):
-        layer = nn.Linear(dim_in, dim_out, bias=False)
-        return layer
+        return nn.Linear(dim_in, dim_out, bias=False)
 
     def make_activation(self):
         return nn.ReLU(inplace=True)
@@ -202,7 +201,7 @@ class SphereInitVanillaMLP(nn.Module):
             self.make_linear(dim_in, self.n_neurons, is_first=True, is_last=False),
             self.make_activation(),
         ]
-        for i in range(self.n_hidden_layers - 1):
+        for _ in range(self.n_hidden_layers - 1):
             self.layers += [
                 self.make_linear(
                     self.n_neurons, self.n_neurons, is_first=False, is_last=False
@@ -272,17 +271,16 @@ class TCNNNetwork(nn.Module):
 def get_mlp(n_input_dims, n_output_dims, config) -> nn.Module:
     network: nn.Module
     if config.otype == "VanillaMLP":
-        network = VanillaMLP(n_input_dims, n_output_dims, config_to_primitive(config))
+        return VanillaMLP(n_input_dims, n_output_dims, config_to_primitive(config))
     elif config.otype == "SphereInitVanillaMLP":
-        network = SphereInitVanillaMLP(
+        return SphereInitVanillaMLP(
             n_input_dims, n_output_dims, config_to_primitive(config)
         )
     else:
         assert (
             config.get("sphere_init", False) is False
         ), "sphere_init=True only supported by VanillaMLP"
-        network = TCNNNetwork(n_input_dims, n_output_dims, config_to_primitive(config))
-    return network
+        return TCNNNetwork(n_input_dims, n_output_dims, config_to_primitive(config))
 
 
 class NetworkWithInputEncoding(nn.Module, Updateable):
@@ -320,18 +318,16 @@ def create_network_with_input_encoding(
 ) -> nn.Module:
     # input suppose to be range [0, 1]
     network_with_input_encoding: nn.Module
-    if encoding_config.otype in [
+    if encoding_config.otype not in [
         "VanillaFrequency",
         "ProgressiveBandHashGrid",
-    ] or network_config.otype in ["VanillaMLP", "SphereInitVanillaMLP"]:
-        encoding = get_encoding(n_input_dims, encoding_config)
-        network = get_mlp(encoding.n_output_dims, n_output_dims, network_config)
-        network_with_input_encoding = NetworkWithInputEncoding(encoding, network)
-    else:
-        network_with_input_encoding = TCNNNetworkWithInputEncoding(
+    ] and network_config.otype not in ["VanillaMLP", "SphereInitVanillaMLP"]:
+        return TCNNNetworkWithInputEncoding(
             n_input_dims=n_input_dims,
             n_output_dims=n_output_dims,
             encoding_config=config_to_primitive(encoding_config),
             network_config=config_to_primitive(network_config),
         )
-    return network_with_input_encoding
+    encoding = get_encoding(n_input_dims, encoding_config)
+    network = get_mlp(encoding.n_output_dims, n_output_dims, network_config)
+    return NetworkWithInputEncoding(encoding, network)

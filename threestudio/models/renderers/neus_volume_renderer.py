@@ -27,8 +27,7 @@ class LearnedVariance(nn.Module):
 
     @property
     def inv_std(self):
-        val = torch.exp(self._inv_std * 10.0)
-        return val
+        return torch.exp(self._inv_std * 10.0)
 
     def forward(self, x):
         return torch.ones_like(x) * self.inv_std.clamp(1.0e-6, 1.0e6)
@@ -72,28 +71,26 @@ class NeuSVolumeRenderer(VolumeRenderer):
     def get_alpha(self, sdf, normal, dirs, dists):
         inv_std = self.variance(sdf)
         if self.cfg.use_volsdf:
-            alpha = torch.abs(dists.detach()) * volsdf_density(sdf, inv_std)
-        else:
-            true_cos = (dirs * normal).sum(-1, keepdim=True)
-            # "cos_anneal_ratio" grows from 0 to 1 in the beginning training iterations. The anneal strategy below makes
-            # the cos value "not dead" at the beginning training iterations, for better convergence.
-            iter_cos = -(
-                F.relu(-true_cos * 0.5 + 0.5) * (1.0 - self.cos_anneal_ratio)
-                + F.relu(-true_cos) * self.cos_anneal_ratio
-            )  # always non-positive
+            return torch.abs(dists.detach()) * volsdf_density(sdf, inv_std)
+        true_cos = (dirs * normal).sum(-1, keepdim=True)
+        # "cos_anneal_ratio" grows from 0 to 1 in the beginning training iterations. The anneal strategy below makes
+        # the cos value "not dead" at the beginning training iterations, for better convergence.
+        iter_cos = -(
+            F.relu(-true_cos * 0.5 + 0.5) * (1.0 - self.cos_anneal_ratio)
+            + F.relu(-true_cos) * self.cos_anneal_ratio
+        )  # always non-positive
 
-            # Estimate signed distances at section points
-            estimated_next_sdf = sdf + iter_cos * dists * 0.5
-            estimated_prev_sdf = sdf - iter_cos * dists * 0.5
+        # Estimate signed distances at section points
+        estimated_next_sdf = sdf + iter_cos * dists * 0.5
+        estimated_prev_sdf = sdf - iter_cos * dists * 0.5
 
-            prev_cdf = torch.sigmoid(estimated_prev_sdf * inv_std)
-            next_cdf = torch.sigmoid(estimated_next_sdf * inv_std)
+        prev_cdf = torch.sigmoid(estimated_prev_sdf * inv_std)
+        next_cdf = torch.sigmoid(estimated_next_sdf * inv_std)
 
-            p = prev_cdf - next_cdf
-            c = prev_cdf
+        p = prev_cdf - next_cdf
+        c = prev_cdf
 
-            alpha = ((p + 1e-5) / (c + 1e-5)).clip(0.0, 1.0)
-        return alpha
+        return ((p + 1e-5) / (c + 1e-5)).clip(0.0, 1.0)
 
     def forward(
         self,
@@ -267,12 +264,8 @@ class NeuSVolumeRenderer(VolumeRenderer):
                 )
                 comp_normal = F.normalize(comp_normal, dim=-1)
                 comp_normal = (comp_normal + 1.0) / 2.0 * opacity  # for visualization
-                out.update(
-                    {
-                        "comp_normal": comp_normal.view(batch_size, height, width, 3),
-                    }
-                )
-        out.update({"inv_std": self.variance.inv_std})
+                out["comp_normal"] = comp_normal.view(batch_size, height, width, 3)
+        out["inv_std"] = self.variance.inv_std
         return out
 
     def update_step(

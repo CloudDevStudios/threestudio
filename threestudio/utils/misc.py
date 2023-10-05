@@ -45,7 +45,8 @@ def load_module_weights(
         state_dict_to_load = {}
         for k, v in state_dict.items():
             ignore = any(
-                [k.startswith(ignore_module + ".") for ignore_module in ignore_modules]
+                k.startswith(f"{ignore_module}.")
+                for ignore_module in ignore_modules
             )
             if ignore:
                 continue
@@ -63,9 +64,7 @@ def load_module_weights(
 
 
 def C(value: Any, epoch: int, global_step: int) -> float:
-    if isinstance(value, int) or isinstance(value, float):
-        pass
-    else:
+    if not isinstance(value, int) and not isinstance(value, float):
         value = config_to_primitive(value)
         if not isinstance(value, list):
             raise TypeError("Scalar specification only supports list, got", type(value))
@@ -113,8 +112,6 @@ def barrier():
 
 
 def broadcast(tensor, src=0):
-    if not _distributed_available():
-        return tensor
-    else:
+    if _distributed_available():
         torch.distributed.broadcast(tensor, src=src)
-        return tensor
+    return tensor
